@@ -1,12 +1,4 @@
-#![feature(test)]
-extern crate bincode;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-
-use crate::blockchain::Block;
-
-mod blockchain;
+use menaechmus::Block;
 
 fn main() {
     let difficulty = 3;
