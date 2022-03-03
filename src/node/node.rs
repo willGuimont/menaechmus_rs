@@ -1,12 +1,14 @@
 use serde::Serialize;
-use serde_derive::Serialize;
+use serde_derive::{Deserialize, Serialize};
 
 use menaechmus::Blockchain;
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Peer {
     url: String,
 }
 
+#[derive(Serialize)]
 pub struct Node<T: Serialize> {
     peers: Vec<Peer>,
     blockchain: Blockchain<T>,
@@ -20,19 +22,23 @@ impl<T: Serialize> Node<T> {
         Node { peers: vec![], blockchain }
     }
 
-    pub fn add_peers(&mut self, peers: Vec<Peer>) {
+    pub fn add_peer(&mut self, peer: Peer) {
         unimplemented!();
     }
 
-    pub fn broadcast_to_peers() {
+    pub fn broadcast_to_peers(&self) {
         unimplemented!();
     }
 
-    pub fn add_mined_block() {
+    pub fn add_mined_block(&mut self) {
         unimplemented!();
     }
 
     pub fn mining_prompt(&self) -> MiningPrompt {
         unimplemented!();
+    }
+
+    pub fn peers(&self) -> Vec<Peer> {
+        self.peers.clone()
     }
 }
