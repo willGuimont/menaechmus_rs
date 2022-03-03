@@ -3,6 +3,11 @@
 extern crate rocket;
 
 use rocket::response::status;
+use rocket_contrib::json::Json;
+
+use menaechmus::{Block, Blockchain};
+
+use crate::node::{MiningPrompt, Node};
 
 mod node;
 
@@ -36,16 +41,21 @@ fn add_mined_block() -> Result<String, status::BadRequest<String>> {
 }
 
 #[get("/prompt")]
-fn get_prompt() -> &'static str {
+fn get_mining_prompt() -> Json<MiningPrompt> {
     // TODO return mining prompt
-    unimplemented!("return block that is not yet mined")
+    // unimplemented!("return block that is not yet mined");
+    Json(MiningPrompt {})
 }
 
 fn main() {
+    let difficulty = 3;
+    let hash_starting_pattern = "0".repeat(difficulty);
+    let mut blockchain = Blockchain::new(Block::new(0, "", "".to_string()), hash_starting_pattern);
+
     rocket::ignite()
         .mount("/", routes![index])
         .mount("/health", routes![health])
         .mount("/peers", routes![add_peers])
-        .mount("/blocks", routes![add_mined_block, get_prompt])
+        .mount("/blocks", routes![add_mined_block, get_mining_prompt])
         .launch();
 }

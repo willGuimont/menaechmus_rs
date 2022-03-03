@@ -11,15 +11,15 @@ pub struct Block<T: Serialize> {
 }
 
 impl<T: Serialize> Block<T> {
-    pub fn new(content: T, prev_hash: &str, nonce: String, hash_starting_pattern: &str) -> Option<Block<T>> {
-        if Self::is_valid_nonce(&content, prev_hash, &nonce, hash_starting_pattern) {
-            let prev_hash = prev_hash.to_string();
-            let nonce = nonce.to_string();
-            let hash = Self::compute_hash(&content, &prev_hash, &nonce);
-            Some(Block { content, prev_hash, nonce, hash })
-        } else {
-            None
-        }
+    pub fn new(content: T, prev_hash: &str, nonce: String) -> Block<T> {
+        let prev_hash = prev_hash.to_string();
+        let nonce = nonce.to_string();
+        let hash = Self::compute_hash(&content, &prev_hash, &nonce);
+        Block { content, prev_hash, nonce, hash }
+    }
+
+    pub fn is_valid(&self, hash_starting_pattern: &str) -> bool {
+        Self::is_valid_nonce(&self.content, &self.prev_hash, &self.nonce, hash_starting_pattern)
     }
 
     pub fn is_valid_nonce(content: &T, prev_hash: &str, nonce: &String, hash_starting_pattern: &str) -> bool {
