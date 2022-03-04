@@ -4,7 +4,7 @@ use serde::Serialize;
 
 use crate::Block;
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct Blockchain<T: Serialize> {
     hash_starting_pattern: String,
     blocks: LinkedList<Block<T>>,

@@ -41,4 +41,8 @@ impl<T: Serialize> Node<T> {
     pub fn peers(&self) -> Vec<Peer> {
         self.peers.clone()
     }
+
+    pub fn blockchain(&self) -> Blockchain<T> {
+        self.blockchain.clone()
+    }
 }

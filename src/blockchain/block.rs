@@ -2,7 +2,7 @@ use bincode::serialize;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct Block<T: Serialize> {
     content: T,
     prev_hash: String,

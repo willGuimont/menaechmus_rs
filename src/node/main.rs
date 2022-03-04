@@ -2,15 +2,11 @@
 #[macro_use]
 extern crate rocket;
 
-use std::borrow::{Borrow, BorrowMut};
-use std::ops::Deref;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 
 use rocket::response::status;
 use rocket::State;
-use rocket_contrib::json;
-use rocket_contrib::json::{Json, JsonValue};
-use serde::{Serialize, Serializer};
+use rocket_contrib::json::{Json };
 
 use menaechmus::{Block, Blockchain};
 
