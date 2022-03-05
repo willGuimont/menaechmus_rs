@@ -13,9 +13,7 @@ pub struct Block<T: ContentType> {
 }
 
 impl<T: ContentType> Block<T> {
-    pub fn new(content: T, prev_hash: &str, nonce: String) -> Block<T> {
-        let prev_hash = prev_hash.to_string();
-        let nonce = nonce.to_string();
+    pub fn new(content: T, prev_hash: String, nonce: String) -> Block<T> {
         let hash = Self::compute_hash(&content, &prev_hash, &nonce);
         Block { content, prev_hash, nonce, hash }
     }

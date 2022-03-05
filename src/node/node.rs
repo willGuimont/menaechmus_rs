@@ -1,6 +1,6 @@
 use serde_derive::{Deserialize, Serialize};
 
-use menaechmus::{Block, Blockchain, ContentType};
+use menaechmus::{Block, Blockchain, BlockchainError, ContentType};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Peer {
@@ -8,6 +8,7 @@ pub struct Peer {
 }
 
 pub struct Node<T: ContentType> {
+    next_content: Option<T>,
     peers: Vec<Peer>,
     blockchain: Blockchain<T>,
 }
@@ -18,40 +19,49 @@ pub struct MiningPrompt<T: ContentType> {
     prev_hash: String,
 }
 
+impl Peer {
+    pub fn url(&self) -> &String {
+        &self.url
+    }
+}
+
 impl<T: ContentType> Node<T> {
     pub fn new(blockchain: Blockchain<T>) -> Node<T> {
-        Node { peers: vec![], blockchain }
+        Node { next_content: None, peers: vec![], blockchain }
     }
 
-    pub fn add_peer(&mut self, peer: Peer) {
-        unimplemented!();
+    pub fn add_peers(&mut self, peers: Vec<Peer>) {
+        self.peers.extend(peers);
     }
 
     pub fn broadcast_peers(&self) {
-        unimplemented!();
+        // TODO remove peers if they don't answer
+        todo!("Broadcast all peers to peers")
     }
 
     pub fn broadcast_mined_block(&self) {
-        unimplemented!();
+        // TODO remove peers if they don't answer
+        todo!("Broadcast a newly mined block to peers")
     }
 
-    pub fn broadcast_blockchain(&self) {
-        unimplemented!();
+    pub fn add_mined_block(&mut self, block: Block<T>) -> Result<(), BlockchainError> {
+        self.blockchain.add_block(block)
     }
 
-    pub fn add_mined_block(&mut self, block: Block<T>) {
-        unimplemented!();
+    pub fn mining_prompt(&self) -> Option<MiningPrompt<T>> {
+        self.next_content.clone().map(|content| {
+            MiningPrompt {
+                content,
+                prev_hash: self.blockchain.last_block().hash().clone(),
+            }
+        })
     }
 
-    pub fn mining_prompt(&self) -> MiningPrompt<T> {
-        unimplemented!();
+    pub fn peers(&self) -> &Vec<Peer> {
+        &self.peers
     }
 
-    pub fn peers(&self) -> Vec<Peer> {
-        self.peers.clone()
-    }
-
-    pub fn blockchain(&self) -> Blockchain<T> {
-        unimplemented!()
+    pub fn blockchain(&self) -> &Blockchain<T> {
+        &self.blockchain
     }
 }
