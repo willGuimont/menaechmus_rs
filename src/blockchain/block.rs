@@ -2,15 +2,17 @@ use bincode::serialize;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-#[derive(Serialize, Debug, Clone)]
-pub struct Block<T: Serialize> {
+pub trait ContentType = Serialize + Clone;
+
+#[derive(Debug)]
+pub struct Block<T: ContentType> {
     content: T,
     prev_hash: String,
     nonce: String,
     hash: String,
 }
 
-impl<T: Serialize> Block<T> {
+impl<T: ContentType> Block<T> {
     pub fn new(content: T, prev_hash: &str, nonce: String) -> Block<T> {
         let prev_hash = prev_hash.to_string();
         let nonce = nonce.to_string();

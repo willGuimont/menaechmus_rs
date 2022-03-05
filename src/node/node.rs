@@ -1,23 +1,24 @@
-use serde::Serialize;
 use serde_derive::{Deserialize, Serialize};
 
-use menaechmus::Blockchain;
+use menaechmus::{Block, Blockchain, ContentType};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Peer {
     url: String,
 }
 
-#[derive(Serialize)]
-pub struct Node<T: Serialize> {
+pub struct Node<T: ContentType> {
     peers: Vec<Peer>,
     blockchain: Blockchain<T>,
 }
 
 #[derive(Serialize)]
-pub struct MiningPrompt {}
+pub struct MiningPrompt<T: ContentType> {
+    content: T,
+    prev_hash: String,
+}
 
-impl<T: Serialize> Node<T> {
+impl<T: ContentType> Node<T> {
     pub fn new(blockchain: Blockchain<T>) -> Node<T> {
         Node { peers: vec![], blockchain }
     }
@@ -26,15 +27,23 @@ impl<T: Serialize> Node<T> {
         unimplemented!();
     }
 
-    pub fn broadcast_to_peers(&self) {
+    pub fn broadcast_peers(&self) {
         unimplemented!();
     }
 
-    pub fn add_mined_block(&mut self) {
+    pub fn broadcast_mined_block(&self) {
         unimplemented!();
     }
 
-    pub fn mining_prompt(&self) -> MiningPrompt {
+    pub fn broadcast_blockchain(&self) {
+        unimplemented!();
+    }
+
+    pub fn add_mined_block(&mut self, block: Block<T>) {
+        unimplemented!();
+    }
+
+    pub fn mining_prompt(&self) -> MiningPrompt<T> {
         unimplemented!();
     }
 
@@ -43,6 +52,6 @@ impl<T: Serialize> Node<T> {
     }
 
     pub fn blockchain(&self) -> Blockchain<T> {
-        self.blockchain.clone()
+        unimplemented!()
     }
 }

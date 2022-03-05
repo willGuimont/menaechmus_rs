@@ -1,25 +1,26 @@
-#![feature(proc_macro_hygiene, decl_macro)]
+#![feature(proc_macro_hygiene, decl_macro, trait_alias)]
 #[macro_use]
 extern crate rocket;
 
 use std::sync::{Arc, Mutex};
 
-use rocket::response::status;
 use rocket::State;
-use rocket_contrib::json::{Json };
+use rocket_contrib::json::Json;
 
 use menaechmus::{Block, Blockchain};
+use crate::dtos::{BlockDtoInput, BlockDtoOutput, FromDto};
 
 use crate::node::{MiningPrompt, Node, Peer};
+use crate::dtos::ToDto;
 
 mod node;
+mod dtos;
 
 type ContentType = i32;
 
 struct NodeState(Arc<Mutex<Node<ContentType>>>);
 
 // TODO document routes
-
 #[get("/")]
 fn index() -> &'static str {
     "Menaechmus node"
@@ -38,28 +39,28 @@ fn health() -> &'static str {
 fn add_peer(node_state: State<NodeState>, peer: Json<Peer>) {
     let mut node = node_state.inner().0.lock().expect("Failed to acquire lock on state");
     node.add_peer(peer.0);
-    node.broadcast_to_peers();
+    node.broadcast_peers();
 }
 
 #[get("/")]
 fn get_peers(node_state: State<NodeState>) -> Json<Vec<Peer>> {
-    let peers = node_state.inner().0.lock().unwrap().peers();
+    let mut node = node_state.inner().0.lock().expect("Failed to acquire lock on state");
+    let peers = node.peers();
     Json(peers)
 }
 
-#[post("/mine")]
-fn add_mined_block(node_state: State<NodeState>) -> Result<String, status::BadRequest<String>> {
-    // TODO add a new block to the chain
-    // TODO validate (see blockchain.rs)
-    // TODO broadcast to other nodes
-    unimplemented!("Add block to chain, receive json, return badrequest on error");
+#[post("/mine", data = "<block>")]
+fn add_mined_block(node_state: State<NodeState>, block: BlockDtoInput<ContentType>) {
+    let mut node = node_state.inner().0.lock().expect("Failed to acquire lock on state");
+    let block = block.to_domain();
+    node.add_mined_block(block);
+    node.broadcast_mined_block();
 }
 
 #[get("/prompt")]
-fn get_mining_prompt(node_state: State<NodeState>) -> Json<MiningPrompt> {
-    // TODO return mining prompt
-    // unimplemented!("return block that is not yet mined");
-    Json(MiningPrompt {})
+fn get_mining_prompt(node_state: State<NodeState>) -> Json<MiningPrompt<ContentType>> {
+    let mut node = node_state.inner().0.lock().expect("Failed to acquire lock on state");
+    Json(node.mining_prompt())
 }
 
 fn main() {

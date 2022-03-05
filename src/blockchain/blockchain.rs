@@ -1,22 +1,21 @@
 use std::collections::linked_list::LinkedList;
 
-use serde::Serialize;
-
 use crate::Block;
+use crate::ContentType;
 
-#[derive(Serialize, Debug, Clone)]
-pub struct Blockchain<T: Serialize> {
+#[derive(Debug)]
+pub struct Blockchain<T: ContentType> {
     hash_starting_pattern: String,
     blocks: LinkedList<Block<T>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum BlockchainError {
     BadPreviousHashError,
     InvalidBlockError,
 }
 
-impl<T: Serialize> Blockchain<T> {
+impl<T: ContentType> Blockchain<T> {
     pub fn new(genesis: Block<T>, hash_starting_pattern: String) -> Blockchain<T> {
         let mut blocks = LinkedList::new();
         blocks.push_back(genesis);

@@ -2,9 +2,9 @@ use std::time::Instant;
 
 use serde::Serialize;
 
-use menaechmus::{Block, Blockchain};
+use menaechmus::{Block, Blockchain, ContentType};
 
-fn mine_block<T: Serialize>(content: T, blockchain: &Blockchain<T>) -> Block<T> {
+fn mine_block<T: ContentType>(content: T, blockchain: &Blockchain<T>) -> Block<T> {
     let mut j = 0;
     loop {
         let nonce = format!("{}", j);
