@@ -1,6 +1,7 @@
 use serde_derive::{Deserialize, Serialize};
 
 use menaechmus::{Block, Blockchain, ContentType};
+
 use crate::node::Peer;
 
 pub trait ToDto {
@@ -18,8 +19,8 @@ pub struct PeerDto {
     url: String,
 }
 
-#[derive(Serialize)]
-pub struct BlockDtoOutput<T: ContentType> {
+#[derive(Serialize, Deserialize)]
+pub struct BlockDto<T: ContentType> {
     content: T,
     prev_hash: String,
     nonce: String,
@@ -27,21 +28,28 @@ pub struct BlockDtoOutput<T: ContentType> {
 }
 
 #[derive(Deserialize)]
-pub struct BlockDtoInput<T: ContentType> {
+pub struct MinedBlockDto<T: ContentType> {
     content: T,
     prev_hash: String,
     nonce: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct BlockchainDto<T: ContentType> {
     hash_starting_pattern: String,
-    blocks: Vec<BlockDtoOutput<T>>,
+    blocks: Vec<BlockDto<T>>,
 }
 
+#[allow(dead_code)]
 pub struct MiningPromptDto<T: ContentType> {
     content: T,
     prev_hash: String,
+}
+
+impl PeerDto {
+    pub fn new(url: String) -> PeerDto {
+        PeerDto { url }
+    }
 }
 
 impl ToDto for Peer {
@@ -55,10 +63,10 @@ impl ToDto for Peer {
 }
 
 impl<T: ContentType> ToDto for Block<T> {
-    type Output = BlockDtoOutput<T>;
+    type Output = BlockDto<T>;
 
     fn to_dto(&self) -> Self::Output {
-        BlockDtoOutput {
+        BlockDto {
             content: self.content().clone(),
             prev_hash: self.prev_hash().clone(),
             nonce: self.nonce().clone(),
@@ -67,7 +75,18 @@ impl<T: ContentType> ToDto for Block<T> {
     }
 }
 
-impl<T: ContentType> FromDto for BlockDtoInput<T> {
+impl<T: ContentType> FromDto for BlockDto<T> {
+    type Output = Block<T>;
+
+    fn to_domain(&self) -> Self::Output {
+        Block::new(
+            self.content.clone(),
+            self.prev_hash.to_string(),
+            self.nonce.to_string())
+    }
+}
+
+impl<T: ContentType> FromDto for MinedBlockDto<T> {
     type Output = Block<T>;
 
     fn to_domain(&self) -> Self::Output {
@@ -81,7 +100,17 @@ impl<T: ContentType> ToDto for Blockchain<T> {
     fn to_dto(&self) -> Self::Output {
         BlockchainDto {
             hash_starting_pattern: self.hash_starting_pattern().to_string(),
-            blocks: self.blocks().iter().map(|b| b.to_dto()).collect()
+            blocks: self.blocks().iter().map(|b| b.to_dto()).collect(),
         }
+    }
+}
+
+impl<T: ContentType> FromDto for BlockchainDto<T> {
+    type Output = Blockchain<T>;
+
+    fn to_domain(&self) -> Self::Output {
+        Blockchain::from_blocks(
+            self.hash_starting_pattern.clone(),
+            self.blocks.iter().map(|b| b.to_domain()).collect())
     }
 }

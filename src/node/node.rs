@@ -1,6 +1,9 @@
+use reqwest::StatusCode;
 use serde_derive::{Deserialize, Serialize};
 
 use menaechmus::{Block, Blockchain, BlockchainError, ContentType};
+
+use crate::dtos::{PeerDto, ToDto};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Peer {
@@ -34,14 +37,54 @@ impl<T: ContentType> Node<T> {
         self.peers.extend(peers);
     }
 
-    pub fn broadcast_peers(&self) {
-        // TODO remove peers if they don't answer
-        todo!("Broadcast all peers to peers")
+    // TODO remove Result output
+    pub async fn broadcast_peers(&self) -> Result<(), reqwest::Error> {
+        let client = reqwest::Client::new();
+        let peers: Vec<PeerDto> = self.peers.iter().map(|p| p.to_dto()).collect();
+
+        for p in &self.peers {
+            client.post(p.url.to_string() + "/peers")
+                .json(&peers)
+                .send()
+                .await?;
+        }
+        Ok(())
     }
 
-    pub fn broadcast_mined_block(&self) {
-        // TODO remove peers if they don't answer
-        todo!("Broadcast a newly mined block to peers")
+    // TODO remove Result output
+    pub async fn prune_peers(&mut self) -> Result<(), reqwest::Error> {
+        let client = reqwest::Client::new();
+        let mut new_peers = vec![];
+        for p in &self.peers {
+            let status = client.get(p.url.to_string() + "/health")
+                .send()
+                .await?
+                .status();
+            if status == StatusCode::OK {
+                new_peers.push(p.clone());
+            }
+        }
+        self.peers = new_peers;
+        Ok(())
+    }
+
+    // TODO remove Result output
+    pub async fn broadcast_blockchain(&self) -> Result<(), reqwest::Error> {
+        let client = reqwest::Client::new();
+        let blockchain = self.blockchain().to_dto();
+
+        for p in &self.peers {
+            client.post(p.url.to_string() + "/blocks")
+                .json(&blockchain)
+                .send()
+                .await?;
+        }
+        Ok(())
+    }
+
+    pub fn sync_blockchain(&mut self, blockchain: Blockchain<T>) {
+        // TODO handle if chain is different (take the most common amongs peers)
+        self.blockchain = blockchain;
     }
 
     pub fn add_mined_block(&mut self, block: Block<T>) -> Result<(), BlockchainError> {

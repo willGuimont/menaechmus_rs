@@ -22,6 +22,14 @@ impl<T: ContentType> Blockchain<T> {
         Blockchain { hash_starting_pattern, blocks }
     }
 
+    pub fn from_blocks(hash_starting_pattern: String, blocks: Vec<Block<T>>) -> Blockchain<T> {
+        let blocks = LinkedList::from_iter(blocks);
+        Blockchain {
+            hash_starting_pattern,
+            blocks,
+        }
+    }
+
     pub fn add_block(&mut self, block: Block<T>) -> Result<(), BlockchainError> {
         let prev_hash = self.blocks.back().unwrap().hash();
 
