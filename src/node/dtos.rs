@@ -14,7 +14,7 @@ pub trait FromDto {
     fn to_domain(&self) -> Self::Output;
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct PeerDto {
     url: String,
 }
@@ -59,6 +59,14 @@ impl ToDto for Peer {
         PeerDto {
             url: self.url().clone(),
         }
+    }
+}
+
+impl FromDto for PeerDto {
+    type Output = Peer;
+
+    fn to_domain(&self) -> Self::Output {
+        Peer::new(self.url.to_string())
     }
 }
 

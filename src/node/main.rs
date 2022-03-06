@@ -1,11 +1,17 @@
 #![feature(proc_macro_hygiene, decl_macro, trait_alias)]
+extern crate core;
 #[macro_use]
 extern crate rocket;
 
+use core::fmt;
+use std::fmt::{format, Formatter};
+use std::path::Display;
 use std::sync::{Arc, Mutex};
 
-use futures::executor::block_on;
-use rocket::State;
+use clap::Parser;
+use log::info;
+use rocket::{Config, State};
+use rocket::config::Environment;
 use rocket_contrib::json::Json;
 
 use menaechmus::{Block, Blockchain, BlockchainError};
@@ -15,6 +21,20 @@ use crate::node::{MiningPrompt, Node, Peer};
 
 mod node;
 mod dtos;
+
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    /// Number of times to greet
+    #[clap(long, default_value_t = 8000)]
+    port: u16,
+
+    #[clap(long, default_value = "")]
+    peer: String,
+
+    #[clap(long)]
+    url: String
+}
 
 type ContentType = i32;
 
@@ -39,19 +59,18 @@ fn get_peers(node_state: State<NodeState>) -> Json<Vec<PeerDto>> {
     Json(peers)
 }
 
-/// Adds new peers to the node
-#[post("/", data = "<peer>")]
-fn add_peer(node_state: State<NodeState>, peer: Json<Vec<Peer>>) {
+#[post("/", data = "<peers>")]
+fn add_peers(node_state: State<NodeState>, peers: Json<Vec<PeerDto>>) {
     let mut node = node_state.inner().0.lock().expect("Failed to acquire lock on state");
-    node.add_peers(peer.0);
-    block_on(node.prune_peers());
-    block_on(node.broadcast_peers());
+    let peers = peers.0.iter().map(|p| p.to_domain()).collect();
+    node.add_peers(peers);
+    node.broadcast_peers();
 }
 
 #[post("/prune")]
 fn prune_peers(node_state: State<NodeState>) {
     let mut node = node_state.inner().0.lock().expect("Failed to acquire lock on state");
-    block_on(node.prune_peers());
+    node.prune_peers();
 }
 
 #[get("/")]
@@ -69,12 +88,15 @@ fn sync_blockchain(node_state: State<NodeState>, blockchain: Json<BlockchainDto<
 }
 
 #[post("/mine", data = "<block>")]
-fn add_mined_block(node_state: State<NodeState>, block: Json<MinedBlockDto<ContentType>>) -> Result<(), BlockchainError> {
+fn add_mined_block(node_state: State<NodeState>, block: Json<MinedBlockDto<ContentType>>) -> Json<Result<(), String>> {
     let mut node = node_state.inner().0.lock().expect("Failed to acquire lock on state");
     let block = block.to_domain();
-    node.add_mined_block(block)?;
-    block_on(node.broadcast_blockchain());
-    Ok(())
+    match node.add_mined_block(block) {
+        Ok(_) => {}
+        Err(err) => { return Json(Err(format!("{:?}", err))); }
+    }
+    node.broadcast_blockchain();
+    Json(Ok(()))
 }
 
 #[get("/prompt")]
@@ -83,18 +105,37 @@ fn get_mining_prompt(node_state: State<NodeState>) -> Json<Option<MiningPrompt<C
     Json(node.mining_prompt())
 }
 
-fn main() {
+#[post("/content", data = "<content>")]
+fn set_content(node_state: State<NodeState>, content: Json<ContentType>) {
+    let mut node = node_state.inner().0.lock().expect("Failed to acquire lock on state");
+    node.set_next_content(content.0);
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args = Args::parse();
+
     let difficulty = 3;
     let hash_starting_pattern = "0".repeat(difficulty);
     let blockchain = Blockchain::new(Block::new(0, "".to_string(), "".to_string()), hash_starting_pattern);
-    let node = Node::new(blockchain);
-    let node_state = Arc::new(Mutex::new(node));
+    let mut node = Node::new(args.url, blockchain);
 
-    rocket::ignite()
+    if args.peer != "" {
+        node.add_peers(vec![Peer::new(args.peer)]);
+        node.broadcast_peers().await?;
+    }
+
+    let node_state = NodeState(Arc::new(Mutex::new(node)));
+    let config = Config::build(Environment::Development)
+        .port(args.port)
+        .finalize()?;
+
+    rocket::custom(config)
         .manage(node_state)
         .mount("/", routes![index])
         .mount("/health", routes![health])
-        .mount("/peers", routes![get_peers, add_peer, prune_peers])
-        .mount("/blocks", routes![get_blockchain, sync_blockchain, add_mined_block, get_mining_prompt])
+        .mount("/peers", routes![get_peers, add_peers, prune_peers])
+        .mount("/blocks", routes![get_blockchain, sync_blockchain, add_mined_block, get_mining_prompt, set_content])
         .launch();
+    Ok(())
 }

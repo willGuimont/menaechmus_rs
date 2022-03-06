@@ -28,5 +28,5 @@ fn main() {
     println!("Finished mining {} blocks", blockchain.blocks().len());
     println!("Duration {:?}", begin_time.elapsed());
 
-    println!("{:?}", blockchain);
+    blockchain.blocks().iter().for_each(|b| println!("{:?}", b));
 }
