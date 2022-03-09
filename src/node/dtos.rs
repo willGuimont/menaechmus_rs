@@ -46,12 +46,6 @@ pub struct MiningPromptDto<T: ContentType> {
     prev_hash: String,
 }
 
-impl PeerDto {
-    pub fn new(url: String) -> PeerDto {
-        PeerDto { url }
-    }
-}
-
 impl ToDto for Peer {
     type Output = PeerDto;
 
