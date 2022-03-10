@@ -14,6 +14,7 @@ fn mine_block<T: ContentType>(content: T, blockchain: &Blockchain<T>) -> Block<T
     }
 }
 
+// TODO connect to node
 fn main() {
     let difficulty = 3;
     let hash_starting_pattern = "0".repeat(difficulty);
