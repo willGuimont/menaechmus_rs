@@ -3,22 +3,21 @@ extern crate core;
 extern crate dotenv;
 #[macro_use]
 extern crate rocket;
-use rocket_sync_db_pools::{diesel, database};
 
-use std::sync::Arc;
 use std::time::Duration;
 
 use clap::Parser;
-use rocket::futures::lock::Mutex;
 
 use menaechmus::{Block, Blockchain};
 
+use crate::db::DbConn;
 use crate::node::{Node, Peer};
 use crate::routes::*;
 
 mod node;
 mod dtos;
 mod routes;
+mod db;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -37,29 +36,30 @@ struct Args {
     timeout_ms: u64,
 }
 
-#[database("sqlite_nodes")]
-struct DbConn(diesel::SqliteConnection);
-
 #[rocket::main]
 async fn main() {
     let args = Args::parse();
+    let node_config = NodeConfig {
+        timeout: Duration::from_millis(args.timeout_ms),
+        url: args.url,
+    };
 
     let difficulty = 3;
     let hash_starting_pattern = "0".repeat(difficulty);
     let blockchain = Blockchain::new(Block::new(0, "".to_string(), "".to_string()), hash_starting_pattern);
-    let mut node = Node::new(args.url, blockchain, Duration::from_millis(args.timeout_ms));
+    let mut node = Node::new(blockchain);
 
     if args.peer != "" {
         node.add_peers(vec![Peer::new(args.peer)]);
-        node.broadcast_peers().await;
+        node.broadcast_peers(node_config.timeout).await;
     }
-    let node_state = NodeState::new(Arc::new(Mutex::new(node)));
+    // TODO save node to db
 
     let figment = rocket::Config::figment()
         .merge(("port", args.port));
 
     rocket::custom(figment)
-        .manage(node_state)
+        .manage(node_config)
         .attach(DbConn::fairing())
         .mount("/", routes![index])
         .mount("/health", routes![health])
