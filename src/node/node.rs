@@ -13,7 +13,7 @@ pub struct Peer {
     url: String,
 }
 
-// Move that to a database
+// TODO Move that to a database
 pub struct Node<T: ContentType> {
     url: String,
     next_content: Option<T>,
