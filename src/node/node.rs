@@ -8,6 +8,8 @@ use menaechmus::{Block, Blockchain, BlockchainError, ContentType};
 
 use crate::dtos::{PeerDto, ToDto};
 
+pub type ContentTypeImpl = i32;
+
 #[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub struct Peer {
     url: String,
@@ -15,11 +17,9 @@ pub struct Peer {
 
 // TODO Move that to a database
 pub struct Node<T: ContentType> {
-    url: String,
     next_content: Option<T>,
     peers: HashSet<Peer>,
     blockchain: Blockchain<T>,
-    timeout: Duration,
 }
 
 #[derive(Serialize)]
@@ -39,47 +39,39 @@ impl Peer {
 }
 
 impl<T: ContentType> Node<T> {
-    pub fn new(url: String, blockchain: Blockchain<T>, timeout: Duration) -> Node<T> {
-        let mut peers = HashSet::new();
-        peers.insert(Peer::new(url.to_string()));
+    pub fn new(blockchain: Blockchain<T>) -> Node<T> {
+        let peers = HashSet::new();
         Node {
-            url,
             next_content: None,
             peers,
             blockchain,
-            timeout,
         }
-    }
-
-    fn other_peers(&self, peers: &HashSet<Peer>) -> HashSet<Peer> {
-        peers.into_iter().filter(|p| p.url != self.url).map(|p| p.clone()).collect()
     }
 
     pub fn add_peers(&mut self, peers: Vec<Peer>) {
         self.peers.extend(peers);
     }
 
-    pub async fn broadcast_peers(&self) {
+    pub async fn broadcast_peers(&self, timeout: Duration) {
         let client = reqwest::Client::new();
         let peers_dto: Vec<PeerDto> = self.peers.iter().map(|p| p.to_dto()).collect();
-        let peers = self.other_peers(&self.peers);
 
-        for p in peers {
+        // TODO remove self from peers
+        for p in &self.peers {
             let _ = client.post(p.url.to_string() + "/peers")
                 .json(&peers_dto)
-                .timeout(self.timeout)
+                .timeout(timeout)
                 .send()
                 .await;
         }
     }
 
-    pub async fn prune_peers(&mut self) {
-        let peers = self.other_peers(&self.peers);
+    pub async fn prune_peers(&mut self, timeout: Duration) {
         let client = reqwest::Client::new();
         let mut new_peers = HashSet::new();
-        for p in peers {
+        for p in &self.peers {
             let status = client.get(p.url.to_string() + "/health")
-                .timeout(self.timeout)
+                .timeout(timeout)
                 .send()
                 .await
                 .ok()
@@ -91,15 +83,14 @@ impl<T: ContentType> Node<T> {
         self.peers = new_peers;
     }
 
-    pub async fn broadcast_blockchain(&self) {
+    pub async fn broadcast_blockchain(&self, timeout: Duration) {
         let client = reqwest::Client::new();
         let blockchain = self.blockchain().to_dto();
-        let peers = self.other_peers(&self.peers);
 
-        for p in peers {
+        for p in &self.peers {
             let _ = client.post(p.url.to_string() + "/blocks")
                 .json(&blockchain)
-                .timeout(self.timeout)
+                .timeout(timeout)
                 .send()
                 .await;
         }
