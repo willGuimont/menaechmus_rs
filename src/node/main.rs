@@ -9,18 +9,17 @@ extern crate rocket;
 use std::time::Duration;
 
 use clap::Parser;
-use diesel::prelude::*;
 
 use menaechmus::{Block, Blockchain};
 
-use crate::model::DbConn;
+use crate::models::DbConn;
 use crate::node::{Node, Peer};
 use crate::routes::*;
 
 mod node;
 mod dtos;
 mod routes;
-mod model;
+mod models;
 mod schema;
 
 #[derive(Parser, Debug)]
@@ -42,6 +41,7 @@ struct Args {
 
 #[rocket::main]
 async fn main() {
+    // TODO logic to store node starting configuration
     let args = Args::parse();
     let node_config = NodeConfig {
         timeout: Duration::from_millis(args.timeout_ms),

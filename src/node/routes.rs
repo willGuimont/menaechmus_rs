@@ -6,7 +6,7 @@ use rocket::serde::json::Json;
 use rocket::State;
 
 use crate::dtos::{BlockchainDto, FromDto, MinedBlockDto, PeerDto, ToDto};
-use crate::model::DbConn;
+use crate::models::DbConn;
 use crate::node::{ContentTypeImpl, MiningPrompt, Node};
 
 pub struct NodeConfig {
