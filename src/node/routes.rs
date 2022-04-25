@@ -6,7 +6,7 @@ use rocket::serde::json::Json;
 use rocket::State;
 
 use crate::dtos::{BlockchainDto, FromDto, MinedBlockDto, PeerDto, ToDto};
-use crate::models::DbConn;
+use crate::models::{DbConn, load_node};
 use crate::node::{ContentTypeImpl, MiningPrompt, Node};
 
 pub struct NodeConfig {
@@ -29,12 +29,12 @@ pub fn health() -> &'static str {
 /// Returns peers
 #[get("/")]
 pub async fn get_peers(conn: DbConn) -> Json<Vec<PeerDto>> {
-    // let node = node_config.inner().0.lock().await;
-    // let peers = node.peers().iter()
-    //     .map(|p| p.to_dto())
-    //     .collect();
-    // Json(peers)
-    unimplemented!()
+    let conn = conn.inner();
+    let node = load_node(&conn).unwrap();
+    let peers = node.peers().iter()
+        .map(|p| p.to_dto())
+        .collect();
+    Json(peers)
 }
 
 /// Adds a new peer to the node, will broadcast its updated peers list to other nodes

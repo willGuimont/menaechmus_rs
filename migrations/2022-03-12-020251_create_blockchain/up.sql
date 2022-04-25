@@ -26,7 +26,6 @@ CREATE TABLE nodes
 (
     id             INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     url            TEXT    NOT NULL,
-    timeout_ms     INTEGER NOT NULL,
-    start_block_id INTEGER,
+    start_block_id INTEGER NOT NULL,
     FOREIGN KEY (start_block_id) REFERENCES blocks (id)
 );

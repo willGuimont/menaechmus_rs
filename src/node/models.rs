@@ -2,6 +2,7 @@ use diesel::prelude::*;
 use rocket_sync_db_pools::database;
 
 use crate::node::{ContentTypeImpl, Node};
+use crate::Peer;
 
 use super::schema::blockchains;
 use super::schema::blocks;
@@ -9,13 +10,18 @@ use super::schema::nodes;
 use super::schema::peers;
 
 #[database("sqlite_nodes")]
-pub struct DbConn(diesel::SqliteConnection);
+pub struct DbConn(SqliteConnection);
+
+impl DbConn {
+    pub fn inner(&self) -> SqliteConnection {
+        self.inner()
+    }
+}
 
 #[derive(Queryable)]
 struct DbNode {
     pub id: i32,
     pub url: String,
-    pub timeout_ms: i32,
     pub start_block_id: i32,
 }
 
@@ -23,7 +29,6 @@ struct DbNode {
 #[table_name = "nodes"]
 struct NewDbNode<'a> {
     pub url: &'a str,
-    pub timeout_ms: i32,
     pub start_block_id: i32,
 }
 
@@ -59,13 +64,19 @@ struct DbPeer {
     pub url: String,
 }
 
+impl DbPeer {
+    pub fn to_peer(self) -> Peer {
+        Peer::new(self.url)
+    }
+}
+
 #[derive(Insertable)]
 #[table_name = "peers"]
 pub struct NewDbPeer<'a> {
     pub url: &'a str,
 }
 
-pub fn insert_peer(conn: &diesel::SqliteConnection, url: &str) {
+pub fn insert_peer(conn: &SqliteConnection, url: &str) {
     let new_peer = NewDbPeer { url };
     diesel::insert_into(peers::table)
         .values(&new_peer)
@@ -73,6 +84,25 @@ pub fn insert_peer(conn: &diesel::SqliteConnection, url: &str) {
         .expect("Error saving peer");
 }
 
-pub fn load_node(conn: &diesel::SqliteConnection) -> Node<ContentTypeImpl> {
+pub fn get_peers(conn: &SqliteConnection) -> Vec<Peer> {
+    peers::table
+        .load::<DbPeer>(conn)
+        .expect("Error loading peers")
+        .into_iter()
+        .map(DbPeer::to_peer)
+        .collect()
+}
+
+pub fn load_node(conn: &diesel::SqliteConnection) -> Option<Node<ContentTypeImpl>> {
+    let n = nodes::table
+        .load::<DbNode>(conn)
+        .expect("Error loading nodes")
+        .into_iter()
+        .nth(0);
+
+    let ps = get_peers(conn);
+
+
+    // Node::load(url)
     unimplemented!()
 }

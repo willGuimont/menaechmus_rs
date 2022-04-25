@@ -19,8 +19,7 @@ table! {
     nodes (id) {
         id -> Integer,
         url -> Text,
-        timeout_ms -> Integer,
-        start_block_id -> Nullable<Integer>,
+        start_block_id -> Integer,
     }
 }
 

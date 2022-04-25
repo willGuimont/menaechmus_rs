@@ -49,9 +49,9 @@ async fn main() {
     };
 
     let difficulty = 3;
-    let hash_starting_pattern = "0".repeat(difficulty);
+    let hash_starting_pattern = "0".repeat;(difficulty);
     let blockchain = Blockchain::new(Block::new(0, "".to_string(), "".to_string()), hash_starting_pattern);
-    let mut node = Node::new(blockchain);
+    let mut node = Node::new(node_config.url.to_string(), blockchain);
 
     if args.peer != "" {
         node.add_peers(vec![Peer::new(args.peer)]);

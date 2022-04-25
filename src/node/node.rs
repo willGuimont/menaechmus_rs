@@ -17,6 +17,7 @@ pub struct Peer {
 
 // TODO Move that to a database
 pub struct Node<T: ContentType> {
+    url: String,
     next_content: Option<T>,
     peers: HashSet<Peer>,
     blockchain: Blockchain<T>,
@@ -39,13 +40,18 @@ impl Peer {
 }
 
 impl<T: ContentType> Node<T> {
-    pub fn new(blockchain: Blockchain<T>) -> Node<T> {
+    pub fn new(url: String, blockchain: Blockchain<T>) -> Node<T> {
         let peers = HashSet::new();
         Node {
+            url: url.to_string(),
             next_content: None,
             peers,
             blockchain,
         }
+    }
+
+    pub fn load(url: &str, peers: Vec<Peer>, blockchain: Blockchain<T>) -> Node<T> {
+        unimplemented!()
     }
 
     pub fn add_peers(&mut self, peers: Vec<Peer>) {
