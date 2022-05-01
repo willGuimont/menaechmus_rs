@@ -50,7 +50,7 @@ impl<T: ContentType> Node<T> {
         }
     }
 
-    pub fn load(url: &str, peers: Vec<Peer>, blockchain: Blockchain<T>) -> Node<T> {
+    pub fn load(url: String, peers: Vec<Peer>, blockchain: Blockchain<T>) -> Node<T> {
         unimplemented!()
     }
 

@@ -15,8 +15,8 @@ CREATE TABLE blocks
 
 CREATE TABLE blockchains
 (
-    head_block INTEGER,
-    tail_block INTEGER,
+    head_block INTEGER NOT NULL,
+    tail_block INTEGER NOT NULL,
     PRIMARY KEY (head_block, tail_block),
     FOREIGN KEY (head_block) REFERENCES blocks (id),
     FOREIGN KEY (tail_block) REFERENCES blocks (id)
@@ -24,8 +24,9 @@ CREATE TABLE blockchains
 
 CREATE TABLE nodes
 (
-    id             INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    url            TEXT    NOT NULL,
-    start_block_id INTEGER NOT NULL,
+    id                    INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    url                   TEXT    NOT NULL,
+    start_block_id        INTEGER NOT NULL,
+    hash_starting_pattern TEXT    NOT NULL,
     FOREIGN KEY (start_block_id) REFERENCES blocks (id)
 );

@@ -1,7 +1,7 @@
 table! {
     blockchains (head_block, tail_block) {
-        head_block -> Nullable<Integer>,
-        tail_block -> Nullable<Integer>,
+        head_block -> Integer,
+        tail_block -> Integer,
     }
 }
 
@@ -20,6 +20,7 @@ table! {
         id -> Integer,
         url -> Text,
         start_block_id -> Integer,
+        hash_starting_pattern -> Text,
     }
 }
 

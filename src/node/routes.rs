@@ -29,8 +29,8 @@ pub fn health() -> &'static str {
 /// Returns peers
 #[get("/")]
 pub async fn get_peers(conn: DbConn) -> Json<Vec<PeerDto>> {
-    let conn = conn.inner();
-    let node = load_node(&conn).unwrap();
+    let node = conn.run(|c| load_node(c)).await.expect("Could not load node");
+    // let node = load_node(&conn).unwrap();
     let peers = node.peers().iter()
         .map(|p| p.to_dto())
         .collect();
