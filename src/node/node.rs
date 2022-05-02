@@ -59,12 +59,10 @@ impl<T: ContentType> Node<T> {
     }
 
     pub async fn broadcast_peers(&self) {
-        let peers: Vec<Peer> = self.peers.iter().map(|p| p.clone()).collect();
-
-        Self::broadcast_from_peers(self.url.to_string(), peers, &self.timeout).await;
+        Self::broadcast_from_peers(self.url.to_string(), self.peers.clone(), &self.timeout).await;
     }
 
-    pub async fn broadcast_from_peers(url: String, peers: Vec<Peer>, timeout: &Duration) {
+    pub async fn broadcast_from_peers(url: String, peers: HashSet<Peer>, timeout: &Duration) {
         let client = reqwest::Client::new();
         let peers_dto: Vec<PeerDto> = peers.iter().map(|p| p.to_dto()).collect();
 
