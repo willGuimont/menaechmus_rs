@@ -67,10 +67,8 @@ pub async fn broadcast_peers(node_state: &State<NodeState>) {
 /// Removes unreachable peers
 #[post("/prune")]
 pub async fn prune_peers(node_state: &State<NodeState>) {
-    // TODO prune peers
-    // let mut node = node_state.inner().0.lock().await;
-    // node.prune_peers().await;
-    unimplemented!()
+    let mut node = node_state.inner().0.lock().await;
+    node.prune_peers().await;
 }
 
 /// Returns the current state of the blockchain

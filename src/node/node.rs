@@ -80,11 +80,10 @@ impl<T: ContentType> Node<T> {
         }
     }
 
-    // TODO prune peers
     pub async fn prune_peers(&mut self) {
         let client = reqwest::Client::new();
         let mut new_peers = HashSet::new();
-        for p in &self.peers {
+        for p in self.peers.iter().filter(|p| p.url != self.url) {
             let status = client.get(p.url.to_string() + "/health")
                 .timeout(self.timeout)
                 .send()
