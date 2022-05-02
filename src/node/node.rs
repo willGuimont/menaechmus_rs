@@ -8,19 +8,17 @@ use menaechmus::{Block, Blockchain, BlockchainError, ContentType};
 
 use crate::dtos::{PeerDto, ToDto};
 
-pub type ContentTypeImpl = i32;
-
 #[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub struct Peer {
     url: String,
 }
 
-// TODO Move that to a database
 pub struct Node<T: ContentType> {
     url: String,
     next_content: Option<T>,
     peers: HashSet<Peer>,
     blockchain: Blockchain<T>,
+    timeout: Duration,
 }
 
 #[derive(Serialize)]
@@ -40,22 +38,14 @@ impl Peer {
 }
 
 impl<T: ContentType> Node<T> {
-    pub fn new(url: String, blockchain: Blockchain<T>) -> Node<T> {
+    pub fn new(url: String, blockchain: Blockchain<T>, timeout: Duration) -> Node<T> {
         let peers = HashSet::new();
         Node {
             url: url.to_string(),
             next_content: None,
             peers,
             blockchain,
-        }
-    }
-
-    pub fn load(url: String, peers: Vec<Peer>, blockchain: Blockchain<T>) -> Node<T> {
-        Node {
-            url,
-            next_content: None,
-            peers: HashSet::from_iter(peers.into_iter()),
-            blockchain,
+            timeout,
         }
     }
 
@@ -63,7 +53,7 @@ impl<T: ContentType> Node<T> {
         self.peers.extend(peers);
     }
 
-    pub async fn broadcast_peers(&self, timeout: Duration) {
+    pub async fn broadcast_peers(&self) {
         let client = reqwest::Client::new();
         let peers_dto: Vec<PeerDto> = self.peers.iter().map(|p| p.to_dto()).collect();
 
@@ -71,18 +61,18 @@ impl<T: ContentType> Node<T> {
         for p in &self.peers {
             let _ = client.post(p.url.to_string() + "/peers")
                 .json(&peers_dto)
-                .timeout(timeout)
+                .timeout(self.timeout)
                 .send()
                 .await;
         }
     }
 
-    pub async fn prune_peers(&mut self, timeout: Duration) {
+    pub async fn prune_peers(&mut self) {
         let client = reqwest::Client::new();
         let mut new_peers = HashSet::new();
         for p in &self.peers {
             let status = client.get(p.url.to_string() + "/health")
-                .timeout(timeout)
+                .timeout(self.timeout)
                 .send()
                 .await
                 .ok()
@@ -138,7 +128,7 @@ impl<T: ContentType> Node<T> {
     pub fn blockchain(&self) -> &Blockchain<T> {
         &self.blockchain
     }
-    
+
     pub fn url(&self) -> &str {
         &self.url
     }

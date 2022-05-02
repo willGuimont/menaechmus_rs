@@ -7,11 +7,10 @@ extern crate rocket;
 use std::time::Duration;
 
 use clap::Parser;
-use rocket::{Build, Rocket};
 
 use menaechmus::{Block, Blockchain};
 
-use crate::node::{ContentTypeImpl, Node, Peer};
+use crate::node::{Node, Peer};
 use crate::routes::*;
 
 mod node;
@@ -39,10 +38,22 @@ struct Args {
 async fn main() {
     let args = Args::parse();
 
+    let difficulty = 3;
+    let hash_starting_pattern = "0".repeat(difficulty);
+    let blockchain = Blockchain::new(Block::new(0, "".to_string(), "".to_string()), hash_starting_pattern);
+    let mut node = Node::new(args.url, blockchain, Duration::from_millis(args.timeout_ms));
+
+    if args.peer != "" {
+        node.add_peers(vec![Peer::new(args.peer)]);
+        node.broadcast_peers().await;
+    }
+    let node_state = NodeState::new(node);
+
     let figment = rocket::Config::figment()
         .merge(("port", args.port));
 
-    let rock = rocket::custom(figment)
+    rocket::custom(figment)
+        .manage(node_state)
         .mount("/", routes![index])
         .mount("/health", routes![health])
         .mount("/peers", routes![get_peers, add_peers, broadcast_peers, prune_peers])

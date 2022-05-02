@@ -1,11 +1,23 @@
 extern crate rocket;
 
-use rocket::serde::json::Json;
-use menaechmus::{Block, Blockchain};
+use std::sync::Arc;
 
-use crate::dtos::{BlockchainDto, MinedBlockDto, PeerDto, ToDto};
-use crate::node::{ContentTypeImpl, MiningPrompt, Node};
-use crate::Peer;
+use rocket::futures::lock::Mutex;
+use rocket::serde::json::Json;
+use rocket::State;
+
+use crate::dtos::{BlockchainDto, FromDto, MinedBlockDto, PeerDto, ToDto};
+use crate::node::{MiningPrompt, Node};
+
+pub type ContentTypeImpl = i32;
+
+pub struct NodeState(Arc<Mutex<Node<ContentTypeImpl>>>);
+
+impl NodeState {
+    pub fn new(node: Node<ContentTypeImpl>) -> NodeState {
+        NodeState(Arc::new(Mutex::new(node)))
+    }
+}
 
 /// Index route
 #[get("/")]
@@ -21,88 +33,76 @@ pub fn health() -> &'static str {
 
 /// Returns peers
 #[get("/")]
-pub async fn get_peers() -> Json<Vec<PeerDto>> {
-    // let node = get_node(conn).await;
-    // let node = load_node(&conn).unwrap();
-    // let peers = node.peers().iter()
-    //     .map(|p| p.to_dto())
-    //     .collect();
-    // Json(peers)
-    unimplemented!()
+pub async fn get_peers(node_state: &State<NodeState>) -> Json<Vec<PeerDto>> {
+    let node = node_state.inner().0.lock().await;
+    let peers = node.peers().iter().map(|p| p.to_dto()).collect();
+    Json(peers)
 }
 
 /// Adds a new peer to the node, will broadcast its updated peers list to other nodes
 #[post("/", data = "<peers>")]
-pub async fn add_peers(peers: Json<Vec<PeerDto>>) {
-    // let peers = peers.0.iter().map(|p| p.to_domain()).collect();
-    // let mut node = node_config.inner().0.lock().await;
-    // node.add_peers(peers);
+pub async fn add_peers(node_state: &State<NodeState>, peers: Json<Vec<PeerDto>>) {
+    let peers = peers.0.iter().map(|p| p.to_domain()).collect();
+    let mut node = node_state.inner().0.lock().await;
+    node.add_peers(peers);
     // TODO add a broadcast peer here once node is in a database and doesn't require shared state
-    unimplemented!()
 }
 
 /// Sends the current peers to other nodes
 #[post("/broadcast")]
-pub async fn broadcast_peers() {
-    // let node = node_config.inner().0.lock().await;
-    // node.broadcast_peers().await;
-    unimplemented!()
+pub async fn broadcast_peers(node_state: &State<NodeState>) {
+    let node = node_state.inner().0.lock().await;
+    node.broadcast_peers().await;
 }
 
 /// Removes unreachable peers
 #[post("/prune")]
-pub async fn prune_peers() {
-    // let mut node = node_config.inner().0.lock().await;
-    // node.prune_peers().await;
-    unimplemented!()
+pub async fn prune_peers(node_state: &State<NodeState>) {
+    let mut node = node_state.inner().0.lock().await;
+    node.prune_peers().await;
 }
 
 /// Returns the current state of the blockchain
 #[get("/")]
-pub async fn get_blockchain() -> Json<BlockchainDto<ContentTypeImpl>> {
-    // let node = node_config.inner().0.lock().await;
-    // let blockchain = node.blockchain().to_dto();
-    // Json(blockchain)
-    unimplemented!()
+pub async fn get_blockchain(node_state: &State<NodeState>) -> Json<BlockchainDto<ContentTypeImpl>> {
+    let node = node_state.inner().0.lock().await;
+    let blockchain = node.blockchain().to_dto();
+    Json(blockchain)
 }
 
 /// Updates the state of the block chain from other another node
 #[post("/", data = "<blockchain>")]
-pub async fn sync_blockchain(blockchain: Json<BlockchainDto<ContentTypeImpl>>) {
+pub async fn sync_blockchain(node_state: &State<NodeState>, blockchain: Json<BlockchainDto<ContentTypeImpl>>) {
     // TODO remove, and instead query other nodes and trust the majority
-    // let mut node = node_config.inner().0.lock().await;
-    // let blockchain = blockchain.0.to_domain();
-    // node.sync_blockchain(blockchain);
-    unimplemented!()
+    let mut node = node_state.inner().0.lock().await;
+    let blockchain = blockchain.0.to_domain();
+    node.sync_blockchain(blockchain);
 }
 
 /// Adds a mined block to the blockchain, might return error
 #[post("/mine", data = "<block>")]
-pub async fn add_mined_block(block: Json<MinedBlockDto<ContentTypeImpl>>) -> Json<Result<(), String>> {
-    // let mut node = node_config.inner().0.lock().await;
-    // let block = block.to_domain();
-    // match node.add_mined_block(block) {
-    //     Ok(_) => {}
-    //     Err(err) => { return Json(Err(format!("{:?}", err))); }
-    // }
+pub async fn add_mined_block(node_state: &State<NodeState>, block: Json<MinedBlockDto<ContentTypeImpl>>) -> Json<Result<(), String>> {
+    let mut node = node_state.inner().0.lock().await;
+    let block = block.to_domain();
+    match node.add_mined_block(block) {
+        Ok(_) => {}
+        Err(err) => { return Json(Err(format!("{:?}", err))); }
+    }
     // TODO add a broadcast blockchain here once node is in a database and doesn't require shared state
-    // Json(Ok(()))
-    unimplemented!()
+    Json(Ok(()))
 }
 
 /// Returns the mining prompt
 #[get("/prompt")]
-pub async fn get_mining_prompt() -> Json<Option<MiningPrompt<ContentTypeImpl>>> {
-    // let node = node_config.inner().0.lock().await;
-    // Json(node.mining_prompt())
-    unimplemented!()
+pub async fn get_mining_prompt(node_state: &State<NodeState>) -> Json<Option<MiningPrompt<ContentTypeImpl>>> {
+    let node = node_state.inner().0.lock().await;
+    Json(node.mining_prompt())
 }
 
 /// Sets the content of the next to be mined block
 #[post("/content", data = "<content>")]
-pub async fn set_content(content: Json<ContentTypeImpl>) {
+pub async fn set_content(node_state: &State<NodeState>, content: Json<ContentTypeImpl>) {
     // TODO remove, for testing purposes only
-    // let mut node = node_config.inner().0.lock().await;
-    // node.set_next_content(content.0);
-    unimplemented!()
+    let mut node = node_state.inner().0.lock().await;
+    node.set_next_content(content.0);
 }
