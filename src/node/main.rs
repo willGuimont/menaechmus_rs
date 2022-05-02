@@ -44,7 +44,7 @@ async fn main() {
     let mut node = Node::new(args.url.to_string(), blockchain, Duration::from_millis(args.timeout_ms));
     node.add_peer(Peer::new(args.url));
 
-    if args.peer != "" {
+    if !args.peer.is_empty() {
         node.add_peer(Peer::new(args.peer));
         node.broadcast_peers().await;
     }

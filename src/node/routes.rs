@@ -1,7 +1,6 @@
 extern crate rocket;
 
 use std::sync::Arc;
-use std::time::Duration;
 
 use rocket::futures::lock::Mutex;
 use rocket::serde::json::Json;
@@ -43,13 +42,19 @@ pub async fn get_peers(node_state: &State<NodeState>) -> Json<Vec<PeerDto>> {
 /// Adds a new peer to the node, will broadcast its updated peers list to other nodes
 #[post("/", data = "<peers>")]
 pub async fn add_peers(node_state: &State<NodeState>, peers: Json<Vec<PeerDto>>) {
-    let (node_peers, timeout, url) = {
+    let (node_peers, timeout, url, blockchain) = {
         let peers = peers.0.iter().map(|p| p.to_domain()).collect();
         let mut node = node_state.inner().0.lock().await;
-        node.add_peers(peers);
-        (node.peers().clone(), node.timeout().clone(), node.url().to_string())
+        let new_peers = node.add_peers(peers);
+
+        if !new_peers {
+            return;
+        }
+
+        (node.peers().clone(), *node.timeout(), &node.url().to_string(), node.blockchain().clone())
     };
-    Node::<ContentTypeImpl>::broadcast_from_peers(url, node_peers, &timeout);
+    Node::<ContentTypeImpl>::broadcast_from_peers(url, &node_peers, &timeout).await;
+    Node::<ContentTypeImpl>::broadcast_blockchain_from_peers(url, &node_peers, &timeout, &blockchain).await;
 }
 
 /// Sends the current peers to other nodes
@@ -62,8 +67,10 @@ pub async fn broadcast_peers(node_state: &State<NodeState>) {
 /// Removes unreachable peers
 #[post("/prune")]
 pub async fn prune_peers(node_state: &State<NodeState>) {
-    let mut node = node_state.inner().0.lock().await;
-    node.prune_peers().await;
+    // TODO prune peers
+    // let mut node = node_state.inner().0.lock().await;
+    // node.prune_peers().await;
+    unimplemented!()
 }
 
 /// Returns the current state of the blockchain
@@ -74,25 +81,31 @@ pub async fn get_blockchain(node_state: &State<NodeState>) -> Json<BlockchainDto
     Json(blockchain)
 }
 
-/// Updates the state of the block chain from other another node
+/// Updates the state of the block chain from another node
 #[post("/", data = "<blockchain>")]
 pub async fn sync_blockchain(node_state: &State<NodeState>, blockchain: Json<BlockchainDto<ContentTypeImpl>>) {
     // TODO remove, and instead query other nodes and trust the majority
     let mut node = node_state.inner().0.lock().await;
     let blockchain = blockchain.0.to_domain();
     node.sync_blockchain(blockchain);
+    // TODO if new, broadcast to peers
 }
 
 /// Adds a mined block to the blockchain, might return error
 #[post("/mine", data = "<block>")]
 pub async fn add_mined_block(node_state: &State<NodeState>, block: Json<MinedBlockDto<ContentTypeImpl>>) -> Json<Result<(), String>> {
-    let mut node = node_state.inner().0.lock().await;
-    let block = block.to_domain();
-    match node.add_mined_block(block) {
-        Ok(_) => {}
-        Err(err) => { return Json(Err(format!("{:?}", err))); }
-    }
-    // TODO add a broadcast blockchain here once node is in a database and doesn't require shared state
+    let (node_peers, timeout, url, blockchain) = {
+        let mut node = node_state.inner().0.lock().await;
+        let block = block.to_domain();
+        match node.add_mined_block(block) {
+            Ok(_) => {}
+            Err(err) => { return Json(Err(format!("{:?}", err))); }
+        }
+
+        (node.peers().clone(), *node.timeout(), &node.url().to_string(), node.blockchain().clone())
+    };
+
+    Node::<ContentTypeImpl>::broadcast_blockchain_from_peers(url, &node_peers, &timeout, &blockchain).await;
     Json(Ok(()))
 }
 

@@ -3,7 +3,7 @@ use std::collections::linked_list::LinkedList;
 use crate::Block;
 use crate::ContentType;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Blockchain<T: ContentType> {
     hash_starting_pattern: String,
     blocks: LinkedList<Block<T>>,
@@ -50,11 +50,11 @@ impl<T: ContentType> Blockchain<T> {
     }
 
     pub fn genesis_block(&self) -> &Block<T> {
-        &self.blocks.front().expect("Blockchain can not be empty")
+        self.blocks.front().expect("Blockchain can not be empty")
     }
 
     pub fn last_block(&self) -> &Block<T> {
-        &self.blocks.back().expect("Blockchain can not be empty")
+        self.blocks.back().expect("Blockchain can not be empty")
     }
 
     pub fn hash_starting_pattern(&self) -> &str {

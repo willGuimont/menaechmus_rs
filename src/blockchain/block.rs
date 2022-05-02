@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 
 pub trait ContentType = Serialize + Clone;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Block<T: ContentType> {
     content: T,
     prev_hash: String,
@@ -23,8 +23,8 @@ impl<T: ContentType> Block<T> {
     }
 
     pub fn is_valid_nonce(content: &T, prev_hash: &str, nonce: &String, hash_starting_pattern: &str) -> bool {
-        let hash = Self::compute_hash(&content, prev_hash, &nonce);
-        return hash.starts_with(hash_starting_pattern);
+        let hash = Self::compute_hash(content, prev_hash, nonce);
+        hash.starts_with(hash_starting_pattern)
     }
 
     fn compute_hash(content: &T, prev_hash: &str, nonce: &String) -> String {

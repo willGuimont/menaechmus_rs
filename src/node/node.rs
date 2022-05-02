@@ -15,7 +15,6 @@ pub struct Peer {
 
 pub struct Node<T: ContentType> {
     url: String,
-    // TODO remove url field
     next_content: Option<T>,
     peers: HashSet<Peer>,
     blockchain: Blockchain<T>,
@@ -42,7 +41,7 @@ impl<T: ContentType> Node<T> {
     pub fn new(url: String, blockchain: Blockchain<T>, timeout: Duration) -> Node<T> {
         let peers = HashSet::new();
         Node {
-            url: url.to_string(),
+            url: url,
             next_content: None,
             peers,
             blockchain,
@@ -50,19 +49,25 @@ impl<T: ContentType> Node<T> {
         }
     }
 
-    pub fn add_peers(&mut self, peers: Vec<Peer>) {
+    /// Add peers, return true if new peers were added
+    pub fn add_peers(&mut self, peers: Vec<Peer>) -> bool {
+        let size = self.peers.len();
         self.peers.extend(peers);
+        self.peers.len() > size
     }
 
-    pub fn add_peer(&mut self, peer: Peer) {
+    /// Add peer, return true if new peers were added
+    pub fn add_peer(&mut self, peer: Peer) -> bool {
+        let is_peer_new = !self.peers.contains(&peer);
         self.peers.insert(peer);
+        is_peer_new
     }
 
     pub async fn broadcast_peers(&self) {
-        Self::broadcast_from_peers(self.url.to_string(), self.peers.clone(), &self.timeout).await;
+        Self::broadcast_from_peers(&self.url, &self.peers, &self.timeout).await;
     }
 
-    pub async fn broadcast_from_peers(url: String, peers: HashSet<Peer>, timeout: &Duration) {
+    pub async fn broadcast_from_peers(url: &str, peers: &HashSet<Peer>, timeout: &Duration) {
         let client = reqwest::Client::new();
         let peers_dto: Vec<PeerDto> = peers.iter().map(|p| p.to_dto()).collect();
 
@@ -75,6 +80,7 @@ impl<T: ContentType> Node<T> {
         }
     }
 
+    // TODO prune peers
     pub async fn prune_peers(&mut self) {
         let client = reqwest::Client::new();
         let mut new_peers = HashSet::new();
@@ -92,14 +98,18 @@ impl<T: ContentType> Node<T> {
         self.peers = new_peers;
     }
 
-    pub async fn broadcast_blockchain(&self, timeout: Duration) {
-        let client = reqwest::Client::new();
-        let blockchain = self.blockchain().to_dto();
+    pub async fn broadcast_blockchain(&self) {
+        Self::broadcast_blockchain_from_peers(&self.url, &self.peers, &self.timeout, &self.blockchain).await
+    }
 
-        for p in &self.peers {
+    pub async fn broadcast_blockchain_from_peers(url: &str, peers: &HashSet<Peer>, timeout: &Duration, blockchain: &Blockchain<T>) {
+        let client = reqwest::Client::new();
+        let blockchain = blockchain.to_dto();
+
+        for p in peers.iter().filter(|p| p.url != url) {
             let _ = client.post(p.url.to_string() + "/blocks")
                 .json(&blockchain)
-                .timeout(timeout)
+                .timeout(*timeout)
                 .send()
                 .await;
         }
