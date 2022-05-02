@@ -1,6 +1,7 @@
 extern crate rocket;
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use rocket::futures::lock::Mutex;
 use rocket::serde::json::Json;
@@ -42,10 +43,17 @@ pub async fn get_peers(node_state: &State<NodeState>) -> Json<Vec<PeerDto>> {
 /// Adds a new peer to the node, will broadcast its updated peers list to other nodes
 #[post("/", data = "<peers>")]
 pub async fn add_peers(node_state: &State<NodeState>, peers: Json<Vec<PeerDto>>) {
-    let peers = peers.0.iter().map(|p| p.to_domain()).collect();
-    let mut node = node_state.inner().0.lock().await;
-    node.add_peers(peers);
-    // TODO add a broadcast peer here once node is in a database and doesn't require shared state
+    let mut node_peers = vec![];
+    let mut timeout = Duration::from_millis(0);
+    let mut url = "".to_string();
+    if let peers = peers.0.iter().map(|p| p.to_domain()).collect() {
+        let mut node = node_state.inner().0.lock().await;
+        node.add_peers(peers);
+        node_peers.extend(node.peers().clone());
+        timeout = node.timeout().clone();
+        url = node.url().to_string();
+    }
+    Node::<ContentTypeImpl>::broadcast_from_peers(url, node_peers, &timeout);
 }
 
 /// Sends the current peers to other nodes

@@ -41,10 +41,11 @@ async fn main() {
     let difficulty = 3;
     let hash_starting_pattern = "0".repeat(difficulty);
     let blockchain = Blockchain::new(Block::new(0, "".to_string(), "".to_string()), hash_starting_pattern);
-    let mut node = Node::new(args.url, blockchain, Duration::from_millis(args.timeout_ms));
+    let mut node = Node::new(args.url.to_string(), blockchain, Duration::from_millis(args.timeout_ms));
+    node.add_peer(Peer::new(args.url));
 
     if args.peer != "" {
-        node.add_peers(vec![Peer::new(args.peer)]);
+        node.add_peer(Peer::new(args.peer));
         node.broadcast_peers().await;
     }
     let node_state = NodeState::new(node);

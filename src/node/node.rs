@@ -8,13 +8,14 @@ use menaechmus::{Block, Blockchain, BlockchainError, ContentType};
 
 use crate::dtos::{PeerDto, ToDto};
 
-#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
+#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Peer {
     url: String,
 }
 
 pub struct Node<T: ContentType> {
     url: String,
+    // TODO remove url field
     next_content: Option<T>,
     peers: HashSet<Peer>,
     blockchain: Blockchain<T>,
@@ -53,15 +54,24 @@ impl<T: ContentType> Node<T> {
         self.peers.extend(peers);
     }
 
-    pub async fn broadcast_peers(&self) {
-        let client = reqwest::Client::new();
-        let peers_dto: Vec<PeerDto> = self.peers.iter().map(|p| p.to_dto()).collect();
+    pub fn add_peer(&mut self, peer: Peer) {
+        self.peers.insert(peer);
+    }
 
-        // TODO remove self from peers
-        for p in &self.peers {
+    pub async fn broadcast_peers(&self) {
+        let peers: Vec<Peer> = self.peers.iter().map(|p| p.clone()).collect();
+
+        Self::broadcast_from_peers(self.url.to_string(), peers, &self.timeout).await;
+    }
+
+    pub async fn broadcast_from_peers(url: String, peers: Vec<Peer>, timeout: &Duration) {
+        let client = reqwest::Client::new();
+        let peers_dto: Vec<PeerDto> = peers.iter().map(|p| p.to_dto()).collect();
+
+        for p in peers.iter().filter(|p| p.url != url) {
             let _ = client.post(p.url.to_string() + "/peers")
                 .json(&peers_dto)
-                .timeout(self.timeout)
+                .timeout(*timeout)
                 .send()
                 .await;
         }
@@ -131,5 +141,9 @@ impl<T: ContentType> Node<T> {
 
     pub fn url(&self) -> &str {
         &self.url
+    }
+
+    pub fn timeout(&self) -> &Duration {
+        &self.timeout
     }
 }
