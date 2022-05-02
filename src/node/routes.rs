@@ -4,28 +4,8 @@ use rocket::serde::json::Json;
 use menaechmus::{Block, Blockchain};
 
 use crate::dtos::{BlockchainDto, MinedBlockDto, PeerDto, ToDto};
-use crate::models::{DbConn, load_node};
 use crate::node::{ContentTypeImpl, MiningPrompt, Node};
-use crate::{Peer, update_node};
-
-
-async fn get_node_with_peer(conn: DbConn, peers: Option<Peer>) -> Node<ContentTypeImpl> {
-    let node = conn.run(|c| load_node(c)).await;
-    if node.is_none() {
-        // TODO get from peers
-        let difficulty = 3;
-        let hash_starting_pattern = "0".repeat(difficulty);
-        let blockchain = Blockchain::new(Block::new(0, "".to_string(), "".to_string()), hash_starting_pattern);
-        let mut node = Node::new("aaa".to_string(), blockchain);
-
-        conn.run(|c| update_node(c, node)).await;
-    }
-    conn.run(|c| load_node(c)).await.unwrap()
-}
-
-async fn get_node(conn: DbConn) -> Node<ContentTypeImpl> {
-    get_node_with_peer(conn, None).await
-}
+use crate::Peer;
 
 /// Index route
 #[get("/")]
@@ -41,13 +21,14 @@ pub fn health() -> &'static str {
 
 /// Returns peers
 #[get("/")]
-pub async fn get_peers(conn: DbConn) -> Json<Vec<PeerDto>> {
-    let node = get_node(conn).await;
+pub async fn get_peers() -> Json<Vec<PeerDto>> {
+    // let node = get_node(conn).await;
     // let node = load_node(&conn).unwrap();
-    let peers = node.peers().iter()
-        .map(|p| p.to_dto())
-        .collect();
-    Json(peers)
+    // let peers = node.peers().iter()
+    //     .map(|p| p.to_dto())
+    //     .collect();
+    // Json(peers)
+    unimplemented!()
 }
 
 /// Adds a new peer to the node, will broadcast its updated peers list to other nodes
