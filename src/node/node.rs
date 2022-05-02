@@ -51,7 +51,12 @@ impl<T: ContentType> Node<T> {
     }
 
     pub fn load(url: String, peers: Vec<Peer>, blockchain: Blockchain<T>) -> Node<T> {
-        unimplemented!()
+        Node {
+            url,
+            next_content: None,
+            peers: HashSet::from_iter(peers.into_iter()),
+            blockchain,
+        }
     }
 
     pub fn add_peers(&mut self, peers: Vec<Peer>) {
@@ -132,5 +137,9 @@ impl<T: ContentType> Node<T> {
 
     pub fn blockchain(&self) -> &Blockchain<T> {
         &self.blockchain
+    }
+    
+    pub fn url(&self) -> &str {
+        &self.url
     }
 }

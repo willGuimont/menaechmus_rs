@@ -49,8 +49,12 @@ impl<T: ContentType> Blockchain<T> {
         &self.blocks
     }
 
+    pub fn genesis_block(&self) -> &Block<T> {
+        &self.blocks.front().expect("Blockchain can not be empty")
+    }
+
     pub fn last_block(&self) -> &Block<T> {
-        &self.blocks.back().unwrap()
+        &self.blocks.back().expect("Blockchain can not be empty")
     }
 
     pub fn hash_starting_pattern(&self) -> &str {

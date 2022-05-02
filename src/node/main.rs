@@ -9,11 +9,12 @@ extern crate rocket;
 use std::time::Duration;
 
 use clap::Parser;
+use rocket::{Build, Rocket};
 
 use menaechmus::{Block, Blockchain};
 
-use crate::models::DbConn;
-use crate::node::{Node, Peer};
+use crate::models::{DbConn, load_node, update_node};
+use crate::node::{ContentTypeImpl, Node, Peer};
 use crate::routes::*;
 
 mod node;
@@ -39,31 +40,33 @@ struct Args {
     timeout_ms: u64,
 }
 
-#[rocket::main]
-async fn main() {
-    // TODO logic to store node starting configuration
-    let args = Args::parse();
-    let node_config = NodeConfig {
-        timeout: Duration::from_millis(args.timeout_ms),
-        url: args.url,
-    };
-
+async fn get_node(rock: &Rocket<Build>, node_url: String, peer_url: String) -> Node<ContentTypeImpl> {
     let difficulty = 3;
     let hash_starting_pattern = "0".repeat(difficulty);
     let blockchain = Blockchain::new(Block::new(0, "".to_string(), "".to_string()), hash_starting_pattern);
-    let mut node = Node::new(node_config.url.to_string(), blockchain);
 
-    if args.peer != "" {
-        node.add_peers(vec![Peer::new(args.peer)]);
-        node.broadcast_peers(node_config.timeout).await;
+    let conn = DbConn::get_one(&rock).await.expect("Could not connect to database");
+    let mut node = conn.run(|c| load_node(c))
+        .await
+        .or_else(|| Some(Node::new(node_url.to_string(), blockchain)))
+        .unwrap();
+
+    if peer_url != "" {
+        node.add_peers(vec![Peer::new(peer_url)]);
+        node.broadcast_peers(Duration::from_millis(500)).await;
     }
-    // TODO save node to db
+
+    node
+}
+
+#[rocket::main]
+async fn main() {
+    let args = Args::parse();
 
     let figment = rocket::Config::figment()
         .merge(("port", args.port));
 
-    rocket::custom(figment)
-        .manage(node_config)
+    let rock = rocket::custom(figment)
         .attach(DbConn::fairing())
         .mount("/", routes![index])
         .mount("/health", routes![health])

@@ -13,7 +13,8 @@ use super::schema::peers;
 #[database("sqlite_nodes")]
 pub struct DbConn(pub SqliteConnection);
 
-#[derive(Queryable, Clone)]
+#[derive(Queryable, Insertable, Clone)]
+#[table_name = "nodes"]
 struct DbNode {
     pub id: i32,
     pub url: String,
@@ -21,13 +22,13 @@ struct DbNode {
     pub hash_starting_pattern: String,
 }
 
-#[derive(Insertable)]
-#[table_name = "nodes"]
-struct NewDbNode<'a> {
-    pub url: &'a str,
-    pub start_block_id: i32,
-    pub hash_starting_pattern: &'a str,
-}
+// #[derive(Insertable)]
+// #[table_name = "nodes"]
+// struct NewDbNode<'a> {
+//     pub url: &'a str,
+//     pub start_block_id: i32,
+//     pub hash_starting_pattern: &'a str,
+// }
 
 #[derive(Queryable, Insertable, Clone)]
 #[table_name = "blockchains"]
@@ -116,6 +117,15 @@ fn get_block(conn: &SqliteConnection, block_id: i32) -> DbBlock {
         .expect("Block not found")
 }
 
+fn get_block_by_hash(conn: &SqliteConnection, hash: &str) -> Option<DbBlock> {
+    blocks::table
+        .filter(blocks::hash.eq(hash))
+        .load::<DbBlock>(conn)
+        .expect("Error loading block")
+        .first()
+        .cloned()
+}
+
 fn db_block_to_block(block: &DbBlock) -> Block<ContentTypeImpl> {
     Block::new(
         block.content.parse().expect("Could not load content of block"),
@@ -151,4 +161,30 @@ pub fn load_node(conn: &diesel::SqliteConnection) -> Option<Node<ContentTypeImpl
     let peers = get_peers(conn);
 
     Some(Node::load(url, peers, blockchain))
+}
+
+pub fn update_node(conn: &diesel::SqliteConnection, node: Node<ContentTypeImpl>) {
+    // TODO add all block
+    // TODO add all block links
+    // TODO add all peers
+    let start_block = get_block_by_hash(conn, node.blockchain().genesis_block().hash()).expect("Could not fetch genesis block");
+    let new_node = DbNode {
+        id: 0,
+        url: node.url().to_string(),
+        start_block_id: start_block.id,
+        hash_starting_pattern: node.blockchain().hash_starting_pattern().to_string(),
+    };
+
+    if let Some(_) = load_node(conn) {
+        // TODO update node here
+        // diesel::update(nodes::table.filter(nodes::id.eq(0)))
+        //     .set(nodes::url.eq("asd"))
+        //     .execute(conn);
+    } else {
+        println!("adddddddddddddddddddddddddddddddddddd");
+        diesel::insert_into(nodes::table)
+            .values(&new_node)
+            .execute(conn)
+            .expect("Error saving node");
+    }
 }
